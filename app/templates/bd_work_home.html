@@ -1,0 +1,8 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('片区作业') }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/bd_work.css?v={{ static_ver('bd_work.css') }}">
+<h1>{{ t('片区作业') }}</h1><p>{{ t('队长分派网格，队员在H5巡店；网格只有一个负责人，可重复巡店。') }}</p>
+<a href="/my/tasks">{{ t('车站任务') }}</a>
+<div class="work-cards">{% for z in zones %}<article class="card"><h2>{{ z.name }}</h2><p>{{ '%.2f'|format(z.area_km2) }} km² · {{ z.store_count }} {{ t('店铺数') }}</p><a class="btn" href="/my/work/zones/{{ z.id }}">{{ t('查看网格') }}</a></article>{% else %}<p class="msg">{{ t('尚无分配给你的片区或网格，请联系管理员或队长。') }}</p>{% endfor %}</div>
+{% endblock %}

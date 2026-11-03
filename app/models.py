@@ -1354,3 +1354,93 @@ class BdMessageRecipient(Base):
     person_code = Column(String(64), nullable=False)
     read_at = Column(DateTime, nullable=True)
     created_at = Column(DateTime, nullable=False, default=_now)
+
+
+class BdZoneRelease(Base):
+    __tablename__ = 'bd_zone_release'
+    id = Column(Integer, primary_key=True)
+    fingerprint = Column(String(64), nullable=False, unique=True)
+    source = Column(JSON, nullable=False)
+    parameters = Column(JSON, nullable=False)
+    audit = Column(JSON, nullable=False)
+    reviews = Column(JSON, nullable=False)
+    created_by = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, nullable=False, default=_now)
+
+
+class BdRegion(Base):
+    __tablename__ = 'bd_region'
+    __table_args__ = (UniqueConstraint('release_id','source_id',name='uq_bd_region_release_source'),)
+    id = Column(Integer, primary_key=True)
+    release_id = Column(Integer, ForeignKey('bd_zone_release.id'), nullable=False, index=True)
+    source_id = Column(String(64), nullable=False)
+    name = Column(String(128), nullable=False)
+    geometry = Column(JSON, nullable=False)
+    merge_boundaries = Column(Boolean, nullable=False, default=True, server_default=text('true'))
+    area_km2 = Column(Float, nullable=False)
+    store_count = Column(Integer, nullable=False)
+    workload = Column(Float)
+    review = Column(JSON, nullable=False)
+    state = Column(String(16), nullable=False, default='ready')
+    team_id = Column(Integer, ForeignKey('bd_team.id'), index=True)
+    leader_id = Column(Integer, ForeignKey('users.id'))
+    revision = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime, nullable=False, default=_now)
+
+
+# 保持原作业端接口兼容；新片区持久化仅使用bd_region表。
+BdZone = BdRegion
+
+
+class BdWorkGrid(Base):
+    __tablename__ = 'bd_work_grid'
+    __table_args__ = (UniqueConstraint('zone_id','source_id',name='uq_bd_grid_source'),
+                     UniqueConstraint('release_id','source_id',name='uq_bd_grid_release_source'))
+    id = Column(Integer, primary_key=True)
+    release_id = Column(Integer, ForeignKey('bd_zone_release.id'), nullable=False, index=True)
+    zone_id = Column(Integer, ForeignKey('bd_region.id'), nullable=True, index=True)
+    source_id = Column(String(64), nullable=False)
+    geometry = Column(JSON, nullable=False)
+    area_km2 = Column(Float, nullable=False)
+    store_count = Column(Integer, nullable=False)
+    state = Column(String(16), nullable=False, default='ready')
+    assignee_id = Column(Integer, ForeignKey('users.id'), index=True)
+    progress = Column(Integer, nullable=False, default=0)
+    task_state = Column(String(16), nullable=False, default='unvisited')
+    revision = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime, nullable=False, default=_now)
+
+
+class BdGridStore(Base):
+    __tablename__ = 'bd_grid_store'
+    __table_args__ = (UniqueConstraint('release_id','source_id',name='uq_bd_grid_store_release_source'),)
+    id = Column(Integer, primary_key=True)
+    release_id = Column(Integer, ForeignKey('bd_zone_release.id'), nullable=False)
+    grid_id = Column(Integer, ForeignKey('bd_work_grid.id'), nullable=False, index=True)
+    source_id = Column(String(128), nullable=False)
+
+
+class BdWorkStore(Base):
+    __tablename__ = 'bd_work_store'
+    id = Column(String(128), primary_key=True)
+    name = Column(Text, nullable=False)
+    address = Column(Text, nullable=False, default='')
+    lat = Column(Float, nullable=False)
+    lon = Column(Float, nullable=False)
+    status = Column(String(16), nullable=False, default='normal')
+    revision = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime, nullable=False, default=_now)
+
+
+class BdStoreVisitLog(Base):
+    __tablename__ = 'bd_store_visit_log'
+    id = Column(Integer, primary_key=True)
+    request_id = Column(String(64), nullable=False, unique=True)
+    store_id = Column(String(128), ForeignKey('bd_work_store.id'), nullable=False, index=True)
+    grid_id = Column(Integer, ForeignKey('bd_work_grid.id'), nullable=False, index=True)
+    actor_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    operation = Column(String(32), nullable=False)
+    before = Column(JSON, nullable=False)
+    after = Column(JSON, nullable=False)
+    note = Column(Text, nullable=False, default='')
+    created_at = Column(DateTime, nullable=False, default=_now)

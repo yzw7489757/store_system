@@ -1,0 +1,23 @@
+<section class="zone-detail" data-zone-id="{{ zone.id }}">
+  <h3 tabindex="-1" id="zone-detail-title">{{ zone.name }}</h3>
+  <p class="zone-state ready">{{ t('已指派') if zone.team_id else t('未指派') }} · #{{ zone.id }}</p>
+  <label class="zone-grid-toggle"><span>{{ t('查看网格') }}</span><input id="zone-grid-toggle" type="checkbox" role="switch" aria-controls="zone-map" {% if not grids %}disabled{% endif %}></label>
+  <script id="zone-grid-data" type="application/json">{{ grid_geometry|tojson }}</script>
+  <dl class="zone-facts"><div><dt>{{ t('有效面积') }}</dt><dd>{{ '%.2f'|format(zone.area_km2) }} <small>km²</small></dd></div><div><dt>{{ t('商户数') }}</dt><dd>{{ merchant_total }}</dd></div><div><dt>{{ t('负责团队') }}</dt><dd>{{ team_names.get(zone.team_id,t('未指派')) }}</dd></div><div><dt>{{ t('负责人') }}</dt><dd>{{ names.get(zone.leader_id,t('未指派')) }}</dd></div></dl>
+  <section class="zone-detail-section zone-load"><h4>{{ t('负载计算') }}</h4>
+    <p>S = w × (A / A₀)² + (1 − w) × (N / N₀)²</p>
+    <p>S = {{ '%.2f'|format(load.area_weight) }} × ({{ '%.3f'|format(load.area) }} / {{ load.target_area }})² + {{ '%.2f'|format(load.merchant_weight) }} × ({{ load.merchants }} / {{ load.target_stores }})²</p>
+    <p><strong>S = {{ '%.3f'|format(load.score) }}</strong></p>
+    <p class="zone-help">{{ t('A为有效面积（km²），N为当前商户数；参数来自该片区生成版本。负载仅供分工参考。') }}</p>
+  </section>
+  <section class="zone-detail-section"><h4>{{ t('任务进度') }} <span>{{ progress }}%</span></h4><progress max="100" value="{{ progress }}" aria-label="{{ t('任务进度') }}">{{ progress }}%</progress><p class="zone-help">{{ t('按网格平均进度统计') }}</p><dl class="zone-task-counts"><div><dt>{{ t('已完成') }}</dt><dd>{{ completed }}</dd></div><div><dt>{{ t('进行中') }}</dt><dd>{{ visiting }}</dd></div><div><dt>{{ t('未巡店') }}</dt><dd>{{ unvisited }}</dd></div></dl><p>{{ t('已分配网格') }} {{ assigned }} / {{ grids|length }} · {{ t('已巡店商户') }} {{ visited }} / {{ merchant_total }}</p></section>
+  <section class="zone-detail-section"><h4>{{ t('商户状态占比') }}</h4><p class="zone-help">{{ t('未记录经营状态的商户单列为未核实；巡店状态独立统计。') }}</p>
+    {% for key,label in [('normal','正常'),('abnormal','异常'),('uncertain','存疑'),('closed','关店'),('unverified','未核实')] %}{% set count=status_counts[key] %}{% set pct=(count*100/merchant_total) if merchant_total else 0 %}<div class="zone-status-row"><span><i class="zone-dot {{ key }}"></i>{{ t(label) }}</span><span>{{ count }} <strong>{{ '%.1f'|format(pct) }}%</strong></span><meter min="0" max="100" value="{{ pct }}" aria-label="{{ t(label) }}">{{ '%.1f'|format(pct) }}%</meter></div>{% endfor %}
+  </section>
+
+  <section class="zone-detail-section"><h4>{{ t('责任管理') }}</h4>
+    {% if teams %}<form method="post" action="/zones/{{ zone.id }}/assign"><input type="hidden" name="_ft" value="{{ form_token() }}"><input type="hidden" name="csrf_token" value="{{ request.state.csrf }}"><input type="hidden" name="revision" value="{{ zone.revision }}"><label for="zone-team">{{ t('负责团队') }}</label><select id="zone-team" name="team_id" required><option value="">{{ t('选择团队') }}</option>{% for tm in teams %}<option value="{{ tm.id }}" {{ 'selected' if zone.team_id==tm.id else '' }}>{{ tm.name }}</option>{% endfor %}</select><button class="btn" type="submit">{{ t('指派或交接') }}</button></form>{% else %}<p class="zone-help">{{ t('尚无团队，请先建立团队、指定唯一队长并添加队员账号。') }}</p>{% endif %}
+    {% if zone.team_id %}<form method="post" action="/zones/{{ zone.id }}/recall"><input type="hidden" name="_ft" value="{{ form_token() }}"><input type="hidden" name="csrf_token" value="{{ request.state.csrf }}"><input type="hidden" name="revision" value="{{ zone.revision }}"><p class="zone-help">{{ t('召回会清除全部网格负责人，巡店历史保留。') }}</p><button class="btn ghost" type="submit">{{ t('召回片区') }}</button></form>{% endif %}
+  </section>
+  {% if grids %}<section class="zone-detail-section"><h4>{{ t('网格任务') }}</h4><ul class="zone-grid-list">{% for g in grids %}<li><span>{{ t('网格') }} #{{ g.id }}</span><span>{{ names.get(g.assignee_id,t('未指派')) }} · {{ g.progress }}%</span></li>{% endfor %}</ul></section>{% endif %}
+</section>

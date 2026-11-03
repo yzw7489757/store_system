@@ -42,6 +42,10 @@ def create_app() -> FastAPI:
     app.include_router(plan_r.router)
     from app.routers import bd_r
     app.include_router(bd_r.router)
+    from app.routers import bd_zones_r
+    app.include_router(bd_zones_r.router)
+    from app.routers import bd_zone_ops_r
+    app.include_router(bd_zone_ops_r.router)
     from app.routers import msg_r
     app.include_router(msg_r.router)
 
@@ -61,7 +65,7 @@ def create_app() -> FastAPI:
                      "/messages",
                      # 车站任务：队员看"分给我的车站"，队长在**同一页**分派 + 提交每日进展
                      # （两处写端点 `/my/tasks/assign`、`/my/tasks/progress` 由路由内做角色校验）
-                     "/my/tasks",
+                     "/my/tasks", "/my/work",
                      # 员工每日自报（点数 + 任务进度**一次提交**）——用户 2026-10-06 口径
                      "/my/self-report",
                      # 任务详情页（进展历史 + 变更日志）——**驳回原因/谁改的只有这里能看**。

@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}{{ zone.name }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/bd_work.css?v={{ static_ver('bd_work.css') }}">
+<a href="{{ '/zones/manage' if current_user.role=='admin' else '/my/work' }}">{{ t('返回') }}</a><h1>{{ zone.name }}</h1>
+<p>{{ t('可派发') if zone.state=='ready' else t('待复核') }} · {{ '%.2f'|format(zone.area_km2) }} km² · {{ zone.store_count }} {{ t('店铺数') }}</p>
+{% if zone.review %}<div class="msg err">{{ t('待复核范围不能派发') }} · {{ zone.review|join(', ') }}</div>{% endif %}
+<div id="work-map" aria-label="{{ t('作业地图') }}"></div><p id="work-map-status" role="status"></p>
+<script id="work-map-config" type="application/json">{{ {'key':maps_key,'geometry':geometry,'selectPrefix':'grid-','language':html_lang(),'error':t('地图加载失败，仍可使用下方任务列表。')}|tojson }}</script><script src="/static/bd_work.js?v={{ static_ver('bd_work.js') }}" defer></script>
+<div class="work-cards">{% for g in grids %}<article class="card" id="grid-{{ g.id }}"><h2>{{ t('网格') }} #{{ g.id }}</h2><p>{{ '%.3f'|format(g.area_km2) }} km² · {{ g.store_count }} {{ t('店铺数') }} · {{ g.progress }}%</p><p>{{ t('负责人') }}: {{ names.get(g.assignee_id,'—') }} · {{ t('待复核') if g.state=='review' else t('可派发') }}</p>
+{% if leader and zone.state=='ready' and g.state=='ready' %}<form method="post" action="/my/work/grids/{{ g.id }}/assign"><input type="hidden" name="_ft" value="{{ form_token() }}"><input type="hidden" name="csrf_token" value="{{ request.state.csrf }}"><input type="hidden" name="revision" value="{{ g.revision }}"><label>{{ t('选择队员') }}<select name="target_id" required><option value="">{{ t('请选择') }}</option>{% for m in members %}<option value="{{ m.id }}" {{ 'selected' if m.id==g.assignee_id else '' }}>{{ m.display_name or m.username }}</option>{% endfor %}</select></label><button class="btn">{{ t('派发网格') }}</button></form>
+{% if g.assignee_id %}<form method="post" action="/my/work/grids/{{ g.id }}/assign"><input type="hidden" name="_ft" value="{{ form_token() }}"><input type="hidden" name="csrf_token" value="{{ request.state.csrf }}"><input type="hidden" name="revision" value="{{ g.revision }}"><button class="btn ghost">{{ t('召回网格') }}</button></form>{% endif %}{% endif %}
+{% if current_user.id==g.assignee_id %}<a class="btn" href="/my/work/grids/{{ g.id }}">{{ t('进入作业') }}</a>{% endif %}
+</article>{% else %}<p>{{ t('暂无网格') }}</p>{% endfor %}</div>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('片区管理') }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/bd_zone_manage.css?v={{ static_ver('bd_zone_manage.css') }}">
+<div class="zone-manager" data-mode="{{ mode }}">
+  <header class="zone-workspace-header"><div><h1>{{ t('片区管理') }}</h1><p>{{ t('在地图上选择网格，组合成新的片区。') if mode=='manage' else t('选择片区，查看责任范围并分配给团队。') }}</p></div>
+    <nav class="zone-mode-switch" aria-label="{{ t('切换工作模式') }}">{% for key,label in [('assign','分配片区'),('manage','管理片区')] %}<a href="{{ request.url.replace(path='/zones').include_query_params(mode=key).remove_query_params('zone') }}" {% if mode==key %}aria-current="page"{% endif %}>{{ t(label) }}</a>{% endfor %}</nav>
+  </header>
+  <div class="zone-map-layout">
+    <div class="zone-map-stage">
+      <div id="zone-map" aria-label="{{ t('作业地图') }}"></div>
+      <div class="zone-region-tools"><form method="get" action="/zones"><input type="hidden" name="mode" value="{{ mode }}"><label for="zone-region">{{ t('地区') }}</label><select id="zone-region" name="region">{% for key,label in regions %}<option value="{{ key }}" {{ 'selected' if region==key else '' }}>{{ t(label) }}</option>{% endfor %}</select><button type="submit" class="btn ghost">{{ t('切换地区') }}</button></form></div>
+      <div class="zone-map-tools" {% if mode=='manage' %}hidden{% endif %}><label for="zone-select">{{ t('选择片区') }}</label><select id="zone-select"><option value="">{{ t('选择片区') }}</option>{% for z in zones %}<option value="{{ z.id }}" {{ 'selected' if selected and selected.zone.id==z.id else '' }}>{{ z.name }} · {{ names.get(z.leader_id,t('未指派')) }}</option>{% endfor %}</select><button type="button" id="zone-reset" class="btn ghost">{{ t('查看全部') }}</button></div>
+      <div class="zone-map-caption"><span>{{ t('网格边界') if mode=='manage' else t('片区边界') }}</span><span>{% if mode=='manage' %}{{ grid_rows|length }} {{ t('个网格') }}{% else %}{{ zones|length }} {{ t('个片区') }}{% endif %}</span></div>
+      <p id="zone-map-status" class="zone-map-notice" role="status" hidden></p>
+      {% if (mode=='assign' and not zones) or (mode=='manage' and not grid_rows) %}<div class="zone-map-empty"><h2>{{ t('尚无片区数据') }}</h2><p>{{ t('请切换到管理片区，选择网格并组合。') if mode=='assign' else t('片区和网格由脚本生成，生成后将在此显示。') }}</p></div>{% endif %}
+    </div>
+    {% if mode=='manage' %}{% include 'bd_grid_region_editor.html' %}{% endif %}
+    <aside id="zone-drawer" class="zone-drawer" role="region" aria-labelledby="zone-drawer-label" {% if not selected %}hidden{% endif %}>
+      <div class="zone-drawer-bar"><h2 id="zone-drawer-label">{{ t('片区详情') }}</h2><button type="button" id="zone-close" class="btn ghost" aria-label="{{ t('关闭详情') }}">{{ t('关闭') }}</button></div>
+      <div id="zone-panel" aria-live="polite">{% if selected %}{% with zone=selected.zone,grids=selected.grids,merchant_total=selected.merchant_total,status_counts=selected.status_counts,visited=selected.visited,progress=selected.progress,completed=selected.completed,visiting=selected.visiting,unvisited=selected.unvisited,assigned=selected.assigned,load=selected.load,grid_geometry=selected.grid_geometry %}{% include 'bd_zone_panel.html' %}{% endwith %}{% endif %}</div>
+    </aside>
+  </div>
+  {% if releases %}<details class="zone-source"><summary>{{ t('版本记录') }}</summary>{% for r in releases %}<p>{{ t('正式版本') }} #{{ r.id }} · {{ jst(r.created_at) }} · {{ r.source.table }}</p>{% endfor %}</details>{% endif %}
+</div>
+{% set config={'key':maps_key,'language':html_lang(),'mode':mode,'geometry':geometry,'selected':selected.zone.id if selected else none,'texts':{'unassigned':t('未指派'),'area':t('有效面积'),'stores':t('商户数'),'team':t('负责团队'),'leader':t('负责人'),'progress':t('任务进度'),'close':t('关闭'),'loading':t('正在加载片区详情…'),'detailError':t('片区详情加载失败，请重试。'),'retry':t('重试'),'login':t('登录已失效，请重新登录。'),'keyMissing':t('地图暂不可用，请使用片区选择器查看和管理。'),'mapError':t('地图加载失败，请使用片区选择器继续管理。')}} %}
+<script id="zone-management-config" type="application/json">{{ config|tojson }}</script>
+<script src="/static/bd_zone_manage.js?v={{ static_ver('bd_zone_manage.js') }}" defer></script>
+<script src="/static/bd_grid_regions.js?v={{ static_ver('bd_grid_regions.js') }}" defer></script>
+{% endblock %}

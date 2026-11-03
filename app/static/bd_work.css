@@ -1,0 +1,12 @@
+#work-map { width: 100%; height: 52vh; min-height: 280px; max-height: 520px; border: 1px solid #c6d1df; border-radius: 8px; }
+.work-cards { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,300px),1fr)); gap: 12px; margin:16px 0; }
+.work-cards .card { margin:0; min-width:0; overflow-wrap:anywhere; }
+.work-cards h2 { font-size:1.05rem; }
+.work-cards small,.grid-tbl small { display:block; overflow-wrap:anywhere; }
+.work-cards form,.card form { display:grid; gap:10px; margin-top:12px; }
+.work-cards label,.card label { display:grid; gap:5px; }
+.work-cards input,.work-cards select,.work-cards textarea,.card input,.card select { box-sizing:border-box; width:100%; min-height:44px; font-size:16px; }
+.work-coordinates { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.work-pages { display:flex; gap:12px; margin:16px 0; }
+details summary { min-height:44px; cursor:pointer; padding:8px 0; }
+@media(max-width:600px) { .work-cards { grid-template-columns:1fr; } #work-map { height:40vh; } .work-coordinates { grid-template-columns:1fr; } }

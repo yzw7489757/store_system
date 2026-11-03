@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}{{ t('网格作业') }} #{{ grid.id }}{% endblock %}
+{% macro tokens() %}<input type="hidden" name="_ft" value="{{ form_token() }}"><input type="hidden" name="csrf_token" value="{{ request.state.csrf }}">{% endmacro %}
+{% macro fields(store) %}
+<label>{{ t('店铺名称') }}<input name="name" maxlength="300" value="{{ store.name if store else '' }}" required></label>
+<label>{{ t('地址') }}<input name="address" maxlength="1000" value="{{ store.address if store else '' }}"></label>
+<div class="work-coordinates"><label>{{ t('纬度') }}<input type="number" name="lat" min="-90" max="90" step="any" value="{{ store.lat if store else '' }}" required></label><label>{{ t('经度') }}<input type="number" name="lon" min="-180" max="180" step="any" value="{{ store.lon if store else '' }}" required></label></div>
+<label>{{ t('门店状态') }}<select name="status">{% for key,label in [('normal','正常'),('abnormal','异常'),('uncertain','存疑'),('closed','关店')] %}<option value="{{ key }}" {{ 'selected' if store and store.status==key else '' }}>{{ t(label) }}</option>{% endfor %}</select></label>
+<label>{{ t('本次作业结果') }}<textarea name="note" maxlength="2000" rows="2"></textarea></label>
+{% endmacro %}
+{% block content %}
+<link rel="stylesheet" href="/static/bd_work.css?v={{ static_ver('bd_work.css') }}">
+<a href="/my/work/zones/{{ zone.id }}">{{ t('返回片区') }}</a><h1>{{ t('网格作业') }} #{{ grid.id }}</h1>
+<div id="work-map" aria-label="{{ t('作业地图') }}"></div><p id="work-map-status" role="status"></p>
+<script id="work-map-config" type="application/json">{{ {'key':maps_key,'geometry':geometry,'stores':stores,'language':html_lang(),'error':t('地图加载失败，仍可使用下方任务列表。')}|tojson }}</script><script src="/static/bd_work.js?v={{ static_ver('bd_work.js') }}" defer></script>
+<section class="card"><h2>{{ t('作业进展') }}</h2><form method="post" action="/my/work/grids/{{ grid.id }}/progress">{{ tokens() }}<input type="hidden" name="revision" value="{{ grid.revision }}"><label>{{ t('进度') }} %<input type="number" name="pct" min="0" max="100" value="{{ grid.progress }}" required></label><label>{{ t('作业状态') }}<select name="task_state">{% for key,label in [('unvisited','未巡店'),('visiting','巡店中'),('visited','巡店完成')] %}<option value="{{ key }}" {{ 'selected' if grid.task_state==key else '' }}>{{ t(label) }}</option>{% endfor %}</select></label><button class="btn">{{ t('保存进展') }}</button></form></section>
+<form method="get"><label>{{ t('搜索门店') }}<input name="kw" value="{{ kw }}" maxlength="100"></label><button class="btn ghost">{{ t('搜索') }}</button></form>
+<div class="work-cards">{% for s in stores %}<article class="card" id="store-{{ s.id }}"><h2>{{ s.name }}</h2><p>{{ t("已巡店") if s.visited else t("未巡店") }}</p><small>{{ s.id }}</small><details><summary>{{ t('巡店或更新门店') }}</summary><form method="post" action="/my/work/grids/{{ grid.id }}/visit">{{ tokens() }}<input type="hidden" name="request_id" value="{{ nonce_for(s.id) }}"><input type="hidden" name="store_id" value="{{ s.id }}"><input type="hidden" name="store_revision" value="{{ s.revision }}">{{ fields(s) }}<button class="btn">{{ t('提交巡店记录') }}</button></form></details></article>{% else %}<p>{{ t('没有匹配门店') }}</p>{% endfor %}</div>
+<nav class="work-pages">{% if page>1 %}<a class="btn ghost" href="?page={{ page-1 }}&kw={{ kw|urlencode }}">{{ t('上一页') }}</a>{% endif %}{% if more %}<a class="btn ghost" href="?page={{ page+1 }}&kw={{ kw|urlencode }}">{{ t('下一页') }}</a>{% endif %}</nav>
+<details class="card"><summary>{{ t('录入新店铺') }}</summary><p>{{ t('坐标必须在当前网格内。新增及巡店均保留操作日志。') }}</p><form method="post" action="/my/work/grids/{{ grid.id }}/visit">{{ tokens() }}<input type="hidden" name="request_id" value="{{ nonce }}"><input type="hidden" name="create" value="true">{{ fields(none) }}<button class="btn">{{ t('录入新店铺') }}</button></form></details>
+<section class="card"><h2>{{ t('最近作业日志') }}</h2>{% for l in logs %}<p>{{ jst(l.created_at) }} · {{ l.operation }} · {{ l.store_id }} · {{ l.note }}</p>{% else %}<p>{{ t('暂无记录') }}</p>{% endfor %}</section>
+{% endblock %}

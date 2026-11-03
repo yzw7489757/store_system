@@ -65,3 +65,6 @@ mcp_service/logs/
 /curl_*.txt
 /*.cookies
 data/backup/
+
+# 本地作业域地理快照（公开来源，但含大体积坐标数据）
+data/bd_zones/

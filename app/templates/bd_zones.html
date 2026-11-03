@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block title %}{{ t('片区预览') }}{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="/static/bd_zones.css?v={{ static_ver('bd_zones.css') }}">
+<div class="page-title">
+  <h1>{{ t('片区预览') }}</h1>
+  <span class="sub">{{ t('东京23区 · 道路边界 · 店铺量试算') }}</span>
+</div>
+<p><a class="btn" href="/zones/manage">{{ t('正式片区管理') }}</a></p>
+<div class="msg" id="zone-notice" role="status" aria-live="polite">{{ t('预览不会创建正式任务，也不会改变团队或员工的责任范围。') }}</div>
+<div class="zone-workspace" data-testid="zone-workspace">
+  <aside class="zone-controls" aria-label="{{ t('生成参数') }}">
+    <form id="zone-form" method="get" action="/zones/preview">
+      <h2>{{ t('生成参数') }}</h2>
+      <input type="hidden" name="ward" value="tokyo23">
+      <p class="zone-scope"><strong>{{ t('东京23区整体') }}</strong></p>
+      <p class="muted">{{ t('23区作为同一生成单位，片区可跨行政区；管理员仅手动指定团队。') }}</p>
+      <p id="zone-data-status" class="muted"></p>
+      <label for="zone-stores">{{ t('商户数参照值（非硬配额）') }}</label>
+      <input id="zone-stores" name="target_stores" type="number" min="1" max="100000" step="1" value="8000" required>
+      <label for="zone-area">{{ t('面积参照值（km²，非硬上限）') }}</label>
+      <input id="zone-area" name="target_area" type="number" min="2" max="500" step="0.5" value="25" required>
+      <label for="zone-weight">{{ t('面积权重（商户权重为1减此值）') }}</label>
+      <input id="zone-weight" name="area_weight" type="number" min="0.05" max="0.95" step="0.05" value="0.25" required>
+      <label for="zone-load-min">{{ t('综合负载下限') }}</label>
+      <input id="zone-load-min" name="load_min" type="number" min="0.1" max="4" step="0.05" value="0.75" required>
+      <label for="zone-load-max">{{ t('综合负载上限') }}</label>
+      <input id="zone-load-max" name="load_max" type="number" min="0.1" max="4" step="0.05" value="1.35" required>
+      <p class="muted">{{ t('负载按面积与商户数的平方加权；参数用于试算，不等同实际工时。') }}</p>
+      <button class="btn" id="zone-generate" type="submit">{{ t('生成预览') }}</button>
+    </form>
+    <section class="zone-rules" aria-labelledby="zone-rules-title">
+      <h2 id="zone-rules-title">{{ t('固定规则') }}</h2>
+      <ul>
+        <li>{{ t('任务网格：目标1km²，允许0.5～2km²。') }}</li>
+        <li>{{ t('先生成完整片区，再在片区内生成任务网格；边界沿道路。') }}</li>
+        <li>{{ t('20～30km²为推荐尺度；高密度可更小，低密度可更大，不执行2倍面积硬限制。') }}</li>
+        <li>{{ t('拟排除地形若包含商户，必须复核，不能自动忽略。') }}</li>
+      </ul>
+    </section>
+    <label class="zone-layer"><input type="checkbox" id="zone-density-layer">{{ t('查看商户密度（按任务网格）') }}</label>
+    <p class="muted">{{ t('密度颜色由浅到深，表示每平方公里商户由少到多；不显示内部道路边界。') }}</p>
+    <label class="zone-layer"><input type="checkbox" id="zone-grid-layer">{{ t('查看选中片区的任务网格') }}</label>
+    <p class="muted">{{ t('选择片区可查看详情；不支持手工绘制或自动分派。') }}</p>
+    <p class="zone-source" id="zone-source"></p>
+    <p class="muted">{{ t('边界与道路：OpenStreetMap；商户：指定PostgreSQL表，每次生成只读获取。') }}</p>
+    <p class="muted">© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a> · ODbL</p>
+  </aside>
+  <section class="zone-main" aria-label="{{ t('地图与片区结果') }}">
+    <div class="zone-map-shell">
+      <div id="zone-map" aria-label="{{ t('东京23区片区地图') }}"></div>
+      <div class="zone-map-status" id="zone-map-status" role="status">{{ t('正在加载Google地图…') }}</div>
+    </div>
+    <p class="muted zone-legend">{{ t('彩色：候选片区；橙色：无共边可合并的待复核地块；红色面：未覆盖；红点：待复核商户。') }}</p>
+    <div class="zone-result-heading">
+      <h2>{{ t('片区与责任地块预览') }} <span id="zone-result-name"></span></h2>
+      <span id="zone-validity" class="muted">{{ t('尚未生成') }}</span>
+    </div>
+    <p id="zone-summary" aria-live="polite" class="muted"></p>
+    <section class="zone-audit" aria-labelledby="zone-audit-title" hidden id="zone-audit">
+      <h2 id="zone-audit-title">{{ t('覆盖审计（预览，不是已派发）') }}</h2>
+      <p id="zone-audit-status" role="status" aria-live="polite"></p>
+      <div class="tbl-wrap"><table class="grid-tbl"><tbody id="zone-audit-rows"></tbody></table></div>
+      <p class="muted">{{ t('几何容差最多1m²，仅用于浮点误差；不能用于忽略商业地块。') }}</p>
+      <details id="zone-review" hidden>
+        <summary>{{ t('被排除或未归属商户的复核明细') }} <span id="zone-review-count"></span></summary>
+        <p>{{ t('这些商户不会被自动视为非作业对象；确认方案前必须处理。') }}</p>
+        <a class="btn ghost" href="/zones/review.csv" download>{{ t('下载完整复核清单') }}</a>
+        <label class="zone-layer"><input type="checkbox" id="zone-review-layer">{{ t('在地图上显示待复核商户') }}</label>
+        <div class="tbl-wrap"><table class="grid-tbl"><thead><tr><th>{{ t('店铺') }}</th><th>{{ t('复核原因') }}</th></tr></thead><tbody id="zone-review-rows"></tbody></table></div>
+        <p class="muted">{{ t('页面最多展示前50条，下载包含全部记录。') }}</p>
+      </details>
+    </section>
+    <div id="zone-issues" class="msg err" role="status" hidden></div>
+    <div class="tbl-wrap">
+      <table class="grid-tbl zone-table">
+        <thead><tr><th>{{ t('片区') }}</th><th>{{ t('有效面积') }}</th><th>{{ t('店铺数') }}</th><th>{{ t('网格数') }}</th><th>{{ t('综合负载') }}</th></tr></thead>
+        <tbody id="zone-rows"><tr><td colspan="5">{{ t('点击生成预览，查看23区整体分片方案。') }}</td></tr></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% set zone_config = {
+  'key': maps_key, 'scope': scope, 'language': html_lang(),
+  'texts': {
+    'loading': t('正在生成，请稍候…'), 'generate': t('生成预览'),
+    'missing': t('23区整体快照尚未就绪，请先生成整体预览快照。'),
+    'keyMissing': t('未配置GOOGLE_PUBLIC_API_KEY；配置后重启服务即可加载地图。'),
+    'mapError': t('Google地图加载失败，请检查密钥、浏览器来源限制及网络连接。'),
+    'requestError': t('预览请求失败，请稍后重试。'),
+    'noResult': t('点击生成预览，查看23区整体分片方案。'), 'noData': t('待采集'),
+    'ready': t('数据就绪'), 'draft': t('草案：存在不满足约束的区域'),
+    'valid': t('几何约束通过 · 仅预览，未发布'),
+    'snapshot': t('数据快照'), 'shops': t('店铺数'), 'grids': t('网格数'),
+    'invalidLocation': t('商户坐标或标识无效'),
+    'databasePending': t('数据库商户将在生成时读取'), 'workload': t('综合负载'), 'merchantRange': t('候选商户范围'),
+    'workload_conflict': t('部分候选超出综合负载区间，仍需调整。'),
+    'residual_land_review': t('低负载地块没有可合并的共边邻区，保留责任并待复核，不作为普通片区。'),
+    'cells': t('道路基础面'), 'regionCandidates': t('片区候选'), 'landUnits': t('待复核地块'), 'landUnit': t('待复核地块'), 'zones': t('片区'), 'pending': t('待处理网格'), 'pendingStores': t('待处理门店'), 'pendingArea': t('待处理面积'), 'ratio': t('面积最大/最小'), 'excluded': t('拟排除面积'),
+    'grid_area': t('部分道路街块无法组合成0.5～2km²的连续网格。'),
+    'coverage': t('道路街块未完整覆盖有效作业范围。'),
+    'zone_ratio': t('片区面积差超过2倍，需调整试算参数或补充道路数据。'),
+    'ratio_infeasible': t('离散陆块与现有网格大小使2倍面积约束不可行；不可作为正式片区派发。'),
+    'isolated_land': t('独立小地块保留为待处理范围，不生成孤岛片区。'),
+    'zone_shape': t('部分片区仍有细长或深凹形状，保留草案，不可正式派发。'),
+    'zone_area': t('部分片区超过设定的最大面积。'),
+    'zone_count': t('道路连续性或网格数量限制了建议片区数。'),
+    'no_stores': t('该快照没有可定位门店，不能作为店铺量均衡依据。'),
+    'coverage_failed': t('存在未覆盖、重复覆盖或范围外溢，不能确认方案。'),
+    'merchant_coverage_failed': t('商户唯一归属审计未通过，不能确认方案。'),
+    'source_audit_missing': t('商户源审计数据尚未准备完整，不能确认方案。'),
+    'excluded_merchant_review': t('商户落在拟排除地形中，必须复核，不能自动忽略。'),
+    'grid_area_conflict': t('任务网格存在面积冲突，但地块和商户已保留责任归属。'),
+    'unknownIssue': t('存在未识别的审计异常，请勿确认方案。'),
+    'auditBlocked': t('不能确认：仍有待复核记录或约束冲突。'),
+    'auditReady': t('审计通过，可进入方案确认；尚未发布或派发。'),
+    'auditArea': t('未覆盖面积（m²）'), 'auditOverlap': t('重复覆盖面积（m²）'), 'auditOutside': t('超出可作业范围面积（m²）'), 'auditDuplicateUnits': t('重复责任单元或网格标识'),
+    'auditSourceStores': t('23区范围内源商户'), 'auditWorkStores': t('可作业范围内商户'),
+    'auditAssigned': t('已唯一归属责任单元'), 'auditUnassigned': t('未归属商户'),
+    'auditDuplicate': t('重复归属商户'), 'auditExcluded': t('拟排除地形内待复核'),
+    'auditInvalid': t('源数据坐标或ID异常'),
+    'excludedReason': t('落在拟排除地形内，需核实坐标和排除范围。'),
+    'unlocatedReason': t('在可作业范围内但未匹配道路面，需处理。'),
+    'previewNotice': t('预览不会创建正式任务，也不会改变团队或员工的责任范围。')
+  }
+} %}
+<script id="zone-config" type="application/json">{{ zone_config|tojson }}</script>
+<script src="/static/bd_zones.js?v={{ static_ver('bd_zones.js') }}" defer></script>
+{% endblock %}

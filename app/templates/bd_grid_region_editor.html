@@ -1,0 +1,27 @@
+{% if grid_rows %}
+<aside id="grid-region-editor" class="zone-drawer grid-composition-drawer" aria-labelledby="grid-composition-title" hidden>
+  <div class="zone-drawer-bar"><div><span class="grid-selection-count" id="grid-region-count">0</span><h2 id="grid-composition-title">{{ t('已选网格') }}</h2></div><button type="button" id="grid-region-clear" class="btn ghost">{{ t('清空选择') }}</button></div>
+  <form method="post" action="/zones/merge-grids" id="grid-region-form">
+    <input type="hidden" name="_ft" value="{{ form_token() }}">
+    <input type="hidden" name="csrf_token" value="{{ request.state.csrf }}">
+    <div class="grid-composition-body">
+      <dl class="grid-selection-facts"><div><dt>{{ t('有效面积') }}</dt><dd><span id="grid-region-area">0.00</span><small>km²</small></dd></div><div><dt>{{ t('商户数') }}</dt><dd id="grid-region-stores">0</dd></div></dl>
+      <p id="grid-region-status" class="zone-help" role="status" aria-live="polite">{{ t('尚未选择网格') }}</p>
+      <h3 class="grid-list-heading">{{ t('已选网格') }}</h3>
+      <div class="grid-region-list" aria-label="{{ t('已选网格') }}">
+        {% for g in grid_rows %}<label hidden>
+          <input type="checkbox" name="selections" data-grid-id="{{ g.id }}" value='{{ {"id":g.id,"revision":g.revision,"zone_id":g.zone_id,"zone_revision":g.zone_revision}|tojson }}' {% if g.locked %}disabled{% endif %}>
+          <span><strong>{{ t('网格') }} #{{ g.id }}</strong><small>{{ '%.2f'|format(g.area) }} km² · {{ g.stores }} {{ t('家商户') }}</small></span>
+        </label>{% endfor %}
+      </div>
+    </div>
+    <footer class="grid-composition-footer">
+      <label class="grid-name-label" for="grid-region-name">{{ t('片区名称') }}</label><input id="grid-region-name" name="name" maxlength="128" required placeholder="{{ t('为新片区命名') }}">
+      <label class="grid-boundary-option"><input type="checkbox" id="grid-region-merge" name="merge_boundaries" value="true" checked><span>{{ t('合并边界') }}<small>{{ t('消除内部共边，保留完整外轮廓。') }}</small></span></label>
+      <button type="submit" id="grid-region-save" class="btn" disabled>{{ t('组合为片区') }}</button>
+    </footer>
+  </form>
+</aside>
+{% set editor_texts={'merged':t('已合并边界'),'separate':t('保留网格边界'),'selected':t('已选网格'),'empty':t('尚未选择网格'),'loading':t('正在校验合并边界…'),'ready':t('边界校验通过，可以保存片区。'),'shape':t('边界连续，但形状较狭长或有狭颈，请检查预览。'),'error':t('预览失败，请重试。'),'mapMissing':t('地图暂不可用，边界已通过服务端校验。')} %}
+<script id="grid-region-config" type="application/json">{{ {'grids':grid_rows,'texts':editor_texts,'fit_grids':true}|tojson }}</script>
+{% endif %}

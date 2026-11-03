@@ -11,3 +11,5 @@ httpx==0.28.1
 itsdangerous==2.2.0
 pypinyin==0.55.0
 markdown==3.9
+shapely==2.1.2
+pyproj==3.7.2

@@ -92,6 +92,8 @@
     <div class="side-title">{{ t('作业') }}</div>
     <a class="side-item {% if _p.startswith('/teams') %}on{% endif %}"
        href="/teams">{{ t('团队') }}</a>
+    <a class="side-item {% if _p.startswith('/zones') %}on{% endif %}"
+       href="/zones">{{ t('片区管理') }}</a>
     <a class="side-item {% if _p.startswith('/stations') %}on{% endif %}"
        href="/stations">{{ t('车站') }}</a>
     <a class="side-item {% if _p.startswith('/tasks') and not _p.startswith('/tasks/reviews') %}on{% endif %}"
@@ -139,6 +141,9 @@
      href="/my/tasks" data-testid="tab-tasks">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h10"/></svg>
     <span>{% if current_user.role == 'leader' %}{{ t('任务分派') }}{% else %}{{ t('我的任务') }}{% endif %}</span>
+  </a>
+  <a class="tab {% if _p.startswith('/my/work') %}on{% endif %}" href="/my/work" data-testid="tab-work">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg><span>{{ t('片区作业') }}</span>
   </a>
   <a class="tab {% if _p.startswith('/my/perf') %}on{% endif %}" href="/my/perf"
      data-testid="tab-perf">

@@ -72,6 +72,10 @@ class Settings:
     staff_visible_from: str = field(
         default_factory=lambda: os.environ.get(
             "STAFF_VISIBLE_FROM", "2026-10"))
+    # Google Maps 浏览器密钥：需在 Google Console 限制 HTTP referrer。
+    google_public_api_key: str = field(
+        default_factory=lambda: os.environ.get("GOOGLE_PUBLIC_API_KEY", ""))
+
     # MCP OAuth（SSO）：对外 issuer（默认取 VISIT_MCP_PUBLIC_HOST 的 https 地址）；
     # 0 关闭（authorize/token 返回 404，/my/token 自助签发不受影响）
     visit_oauth_issuer: str = field(

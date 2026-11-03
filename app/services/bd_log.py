@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 
 from app.models import BdLog, User
 
-DOMAINS = ("task", "team", "member", "station")
+DOMAINS = ("task", "team", "member", "station", "zone", "grid")
 
 
 def actor_of(db: Session, user) -> Dict[str, str]:
@@ -143,7 +143,7 @@ def ACTION_LABELS(lang: str = "zh") -> Dict[str, str]:
 
 
 def DOMAIN_LABELS(lang: str = "zh") -> Dict[str, str]:
-    zh = {"task": "任务", "team": "团队", "member": "成员", "station": "车站"}
+    zh = {"task": "任务", "team": "团队", "member": "成员", "station": "车站", "zone": "片区", "grid": "网格"}
     ja = {"task": "タスク", "team": "チーム", "member": "メンバー",
-          "station": "駅"}
+          "station": "駅", "zone": "担当エリア", "grid": "作業区画"}
     return ja if lang == "ja" else zh

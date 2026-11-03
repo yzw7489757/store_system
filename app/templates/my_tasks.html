@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ t('我的任务') }}{% endblock %}
 {% block content %}
+<p><a class="btn" href="/my/work">{{ t('片区作业') }}</a></p>
 <div class="page-title">
   <h1>{% if is_leader %}{{ t('任务') }}{% else %}{{ t('我的任务') }}{% endif %}</h1>
   <span class="sub">
